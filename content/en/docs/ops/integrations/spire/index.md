@@ -11,10 +11,10 @@ test: no
 
 [Spire](/docs/ops/integrations/spire/)
 
-SPIRE is a production-ready implementation of the SPIFFE APIs that performs node
+[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/) is a production-ready implementation of the SPIFFE APIs that performs node
 and workload attestation in order to securely issue SVIDs to workloads, and verify
-the SVIDs of other workloads, based on a predefined set of conditions. For more information,
-access [SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/).
+the SVIDs of other workloads, based on a predefined set of conditions. In an Istio deployment, SPIRE can be
+configured as a source of SVIDs for Istio workloads through integrating with [Envoy's SDS API](https://www.envoyproxy.io/docs/envoy/latest/configuration/security/secret).
 
 ## Install Spire
 
@@ -26,16 +26,20 @@ Istio provides a basic sample installation to quickly get Spire up and running:
 $ kubectl apply -f @samples/security/envoy-sds/spire/spire-quickstart.yaml
 {{< /text >}}
 
-This will deploy Spire into your cluster, along with [SPIFFE CSI Driver](https://github.com/spiffe/spiffe-csi) used to share the Spire Agent UDS socket with other pods throughout
-the node, as well as the [SPIRE Kubernetes Workload Registrar](https://github.com/spiffe/spire/tree/main/support/k8s/k8s-workload-registrar) that facilitates automatic
-workload registration within Kubernetes. See [Install Istio](#install-istio) to configure Istio to integrate with the SPIFFE CSI Driver.
+This will deploy SPIRE into your cluster, along with two additional components: the [SPIFFE CSI Driver](https://github.com/spiffe/spiffe-csi) — used to share the Spire Agent's Unix Domain Socket with the other
+pods throughout the node — and the [SPIRE Kubernetes Workload Registrar](https://github.com/spiffe/spire/tree/main/support/k8s/k8s-workload-registrar), a facilitator that performs automatic workload registration
+within Kubernetes. See [Install Istio](#install-istio) to configure Istio and integrate with the SPIFFE CSI Driver.
+
+Note that many configuration used here may not be fully apropriate for production. 
+Please see [Scaling SPIRE](https://spiffe.io/docs/latest/planning/scaling_spire/) for more information on configuring SPIRE for a production environment.
 
 ### Option 2: Customizable Spire install
 
-Consult the [Spire Installation guide](https://spiffe.io/docs/latest/try/getting-started-k8s/) to get started deploying Spire into
-your Kubernetes environment. See [Integration Prerequisites](#integration-prerequisites) for more information on configuring Spire to integrate with Istio deployments.
+Reference the [SPIRE Installation guide](https://spiffe.io/docs/latest/try/getting-started-k8s/) 
+to get started deploying SPIRE into your Kubernetes environment. See [Integration Prerequisites](#integration-prerequisites)
+for more information on configuring SPIRE to integrate with Istio deployments.
 
-## Integration Prerequisites
+## CA Integration Prerequisites
 
 There are a couple of necessary configuration requirements to successfully integrate Istio with Spire CA:
 
