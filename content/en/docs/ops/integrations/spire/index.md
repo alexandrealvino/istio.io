@@ -39,7 +39,7 @@ Reference the [SPIRE Installation guide](https://spiffe.io/docs/latest/try/getti
 to get started deploying SPIRE into your Kubernetes environment. See [Integration Prerequisites](#integration-prerequisites)
 for more information on configuring SPIRE to integrate with Istio deployments.
 
-## CA Integration Prerequisites
+### CA Integration Prerequisites
 
 There are a couple of necessary configuration requirements to successfully integrate Istio with Spire CA:
 
@@ -115,8 +115,9 @@ to inject automatically the spire template below into new workloads pods.
    EOF
    {{< /text >}}
 
-//TODO Explain in more details about what this configuration deploys (patch ingress/egress and create the spire template for the sidecar injection)
-This will deploy Istio control plane along with an Ingressgateway
+This will share the spiffe-csi-driver with the Ingressgateway and the sidecars that are going
+to be automatically injected on workload pods, granting them access to the Spire Agent's UNIX Domain Socket.
+
 
 ## Registering Workloads
 
