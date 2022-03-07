@@ -23,7 +23,7 @@ access [SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/).
 Istio provides a basic sample installation to quickly get Spire up and running:
 
 {{< text bash >}}
-$ kubectl apply -f /home/alexandre/Goland/fork/ale/istio/samples/security/envoy-sds/spire/spire-quickstart.yaml
+$ kubectl apply -f @samples/security/envoy-sds/spire/spire-quickstart.yaml
 {{< /text >}}
 
 This will deploy Spire into your cluster, along with [SPIFFE CSI Driver](https://github.com/spiffe/spiffe-csi) used to share the Spire Agent UDS socket with other pods throughout
@@ -59,55 +59,57 @@ to access the Spire Agent socket shared by the [SPIFFE CSI Driver](https://githu
 [Automatic sidecar injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection)
 to inject automatically the spire template below into new workloads pods.
 
-{{< text bash >}}
-$ istioctl install --skip-confirmation -f - <<EOF
-apiVersion: install.istio.io/v1alpha1
-kind: IstioOperator
-metadata:
-namespace: istio-system
-spec:
-profile: default
-meshConfig:
-trustDomain: example.org
-values:
-global:
-# This is used to customize the sidecar template
-sidecarInjectorWebhook:
-templates:
-spire: |
-spec:
-containers:
-- name: istio-proxy
-volumeMounts:
-- name: workload-socket
-mountPath: /run/secrets/workload-spiffe-uds
-readOnly: true
-volumes:
-- name: workload-socket
-csi:
-driver: "csi.spiffe.io"
-components:
-ingressGateways:
-- name: istio-ingressgateway
-enabled: true
-k8s:
-overlays:
-- apiVersion: apps/v1
-kind: Deployment
-name: istio-ingressgateway
-patches:
-- path: spec.template.spec.volumes.[name:workload-socket]
-value:
-name: workload-socket
-csi:
-driver: "csi.spiffe.io"
-- path: spec.template.spec.containers.[name:istio-proxy].volumeMounts.[name:workload-socket]
-value:
-name: workload-socket
-mountPath: /run/secrets/workload-spiffe-uds
-readOnly: true
-EOF
-{{< /text >}}
+   {{< text bash >}}
+   $ istioctl install --skip-confirmation -f - <<EOF
+   apiVersion: install.istio.io/v1alpha1
+   kind: IstioOperator
+   metadata:
+     namespace: istio-system
+   spec:
+     profile: default
+     meshConfig:
+       trustDomain: example.org
+     values:
+       global:
+       # This is used to customize the sidecar template
+       sidecarInjectorWebhook:
+         templates:
+           spire: |
+             spec:
+               containers:
+               - name: istio-proxy
+                 volumeMounts:
+                 - name: workload-socket
+                   mountPath: /run/secrets/workload-spiffe-uds
+                   readOnly: true
+               volumes:
+                 - name: workload-socket
+                   csi:
+                     driver: "csi.spiffe.io"
+     components:
+       ingressGateways:
+         - name: istio-ingressgateway
+           enabled: true
+           label:
+             istio: ingressgateway
+           k8s:
+             overlays:
+               - apiVersion: apps/v1
+                 kind: Deployment
+                 name: istio-ingressgateway
+                 patches:
+                   - path: spec.template.spec.volumes[8]
+                     value:
+                       name: workload-socket
+                       csi:
+                         driver: "csi.spiffe.io"
+                   - path: spec.template.spec.containers.[name:istio-proxy].volumeMounts.[name:workload-socket]
+                     value:
+                       name: workload-socket
+                       mountPath: "/run/spire/sockets"
+                       readOnly: true
+   EOF
+   {{< /text >}}
 
 //TODO Explain in more details about what this configuration deploys (patch ingress/egress and create the spire template for the sidecar injection)
 This will deploy Istio control plane along with an Ingressgateway
@@ -182,7 +184,27 @@ $ kubectl exec -i -t $SPIRE_SERVER_POD -n spire -c spire-server -- /bin/sh -c "b
 
 ## Spire Federation
 
-//TODO
+Istio uses different Envoy validation contexts for workload identities and bundles.
+To enable Spire Federation:
+
+1. Consult [Spire Agent SDS configuration](https://github.com/spiffe/spire/blob/main/doc/spire_agent.md#sds-configuration) and set the following 
+SDS configuration values for your Spire Agent configuration file.
+
+| Configuration              | Description                                                                                      | Validation Context |
+| -------------------------- | ------------------------------------------------------------------------------------------------ |--------------------|
+| `default_svid_name`        | The TLS Certificate resource name to use for the default X509-SVID with Envoy SDS                | default            |
+| `default_bundle_name`      | The Validation Context resource name to use for the default X.509 bundle with Envoy SDS          | null               |
+| `default_all_bundles_name` | The Validation Context resource name to use for all bundles (including federated) with Envoy SDS | ROOTCA             |
+
+This will allow Envoy to get federated bundles from Spire.
+
+2. Adds the federates with podAnnotation from spiffe.io, with the trust domain you want to federate, for your workload deployment:
+
+   {{< text  >}}
+   podAnnotations:
+     spiffe.io/federatesWith: "domain.test"
+   {{< /text >}}
+
 ## Cleanup Spire
 
 * Remove created Kubernetes resources:
