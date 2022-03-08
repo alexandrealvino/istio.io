@@ -30,8 +30,10 @@ This will deploy SPIRE into your cluster, along with two additional components: 
 pods throughout the node — and the [SPIRE Kubernetes Workload Registrar](https://github.com/spiffe/spire/tree/main/support/k8s/k8s-workload-registrar), a facilitator that performs automatic workload registration
 within Kubernetes. See [Install Istio](#install-istio) to configure Istio and integrate with the SPIFFE CSI Driver.
 
+{{< warning >}}
 Note that many configuration used here may not be fully apropriate for production. 
 Please see [Scaling SPIRE](https://spiffe.io/docs/latest/planning/scaling_spire/) for more information on configuring SPIRE for a production environment.
+{{< /warning >}}
 
 ### Option 2: Customizable Spire install
 
@@ -148,7 +150,6 @@ $ SPIRE_SERVER_POD=$(kubectl get pod -l app=spire-server -n spire -o jsonpath="{
 {{< /text >}}
 
 3. Attest the Spire Agent running on the node
-   //TODO add command output
    {{< text bash >}}
    $ kubectl exec -n spire $SPIRE_SERVER_POD -- \
    /opt/spire/bin/spire-server entry create \
@@ -158,10 +159,19 @@ $ SPIRE_SERVER_POD=$(kubectl get pod -l app=spire-server -n spire -o jsonpath="{
    -selector k8s_psat:agent_sa:spire-agent \
    -node -socketPath /run/spire/sockets/server.sock
    {{< /text >}}
+   
+   {{< text >}}
+   Entry ID         : d38c88d0-7d7a-4957-933c-361a0a3b039c
+   SPIFFE ID        : spiffe://example.org/ns/spire/sa/spire-agent
+   Parent ID        : spiffe://example.org/spire/server
+   Revision         : 0
+   TTL              : default
+   Selector         : k8s_psat:agent_ns:spire
+   Selector         : k8s_psat:agent_sa:spire-agent
+   Selector         : k8s_psat:cluster:demo-cluster
+   {{</ text >}}
 
 4. and then register an entry for the pod:
-   //TODO add command output
-   //TODO Explain the necessity for creating the entries with the Istio ns and sa pattern
    {{< text bash >}}
    $ kubectl exec -n spire $SPIRE_SERVER_POD -- \
    /opt/spire/bin/spire-server entry create \
@@ -175,6 +185,22 @@ $ SPIRE_SERVER_POD=$(kubectl get pod -l app=spire-server -n spire -o jsonpath="{
    -socketPath /run/spire/sockets/server.sock
    {{< /text >}}
 
+   {{< text >}}
+   Entry ID         : 6f2fe370-5261-4361-ac36-10aae8d91ff7
+   SPIFFE ID        : spiffe://example.org/ns/istio-system/sa/istio-ingressgateway-service-account
+   Parent ID        : spiffe://example.org/ns/spire/sa/spire-agent
+   Revision         : 0
+   TTL              : default
+   Selector         : k8s:ns:istio-system
+   Selector         : k8s:pod-uid:63c2bbf5-a8b1-4b1f-ad64-f62ad2a69807
+   Selector         : k8s:sa:istio-ingressgateway-service-account
+   DNS name         : istio-ingressgateway.istio-system.svc
+   DNS name         : istio-ingressgateway-c48554dd6-cff5z
+   {{</ text >}}
+
+{{< warning >}}
+SpiffeIDs for workloads must contain the Istio SPIFFE ID pattern spiffe://<trust.domain>/ns/<namespace>/sa/<service-account>
+{{< /warning >}}
 
 Consult [Registering workloads](https://spiffe.io/docs/latest/deploying/registering/) on how
 to create new entries for workloads and attest a set of multiples selectors for securing services.
@@ -182,10 +208,22 @@ to create new entries for workloads and attest a set of multiples selectors for 
 ## Verifying Entries
 
 Confirm that identities were created for the workloads.
-//TODO add command output
 {{< text bash >}}
 $ kubectl exec -i -t $SPIRE_SERVER_POD -n spire -c spire-server -- /bin/sh -c "bin/spire-server entry show -socketPath /run/spire/sockets/server.sock"
 {{< /text >}}
+
+   {{< text >}}
+   Found 1 entry
+   Entry ID         : c8dfccdc-9762-4762-80d3-5434e5388ae7
+   SPIFFE ID        : spiffe://example.org/ns/istio-system/sa/istio-ingressgateway-service-account
+   Parent ID        : spiffe://example.org/ns/spire/sa/spire-agent
+   Revision         : 0
+   TTL              : default
+   Selector         : k8s:ns:istio-system
+   Selector         : k8s:pod-uid:88b71387-4641-4d9c-9a89-989c88f7509d
+   Selector         : k8s:sa:istio-ingressgateway-service-account
+   DNS name         : istio-ingressgateway-c48554dd6-cff5z
+   {{< /text >}}
 
 ## Spire Federation
 
